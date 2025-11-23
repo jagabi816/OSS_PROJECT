@@ -62,3 +62,8 @@ Thumbs.db
 # Lock files (선택사항 - 프로젝트에 따라)
 # uv.lock
 
+# Sensitive information
+*.env
+config.py
+secrets.py
+
