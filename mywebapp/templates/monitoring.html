@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flask Monitoring Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🔍 Flask Monitoring Dashboard</h1>
+        <div class="header-controls">
+          <a href="/" class="btn btn-secondary">← 메인 페이지</a>
+          <button id="refreshBtn" class="btn btn-primary">새로고침</button>
+          <label class="auto-refresh">
+            <input type="checkbox" id="autoRefresh" />
+            자동 새로고침 (5초)
+          </label>
+        </div>
+      </header>
+
+      <!-- 알림 배너 -->
+      <div id="alertBanner" class="alert-banner" style="display: none;"></div>
+      
+      <!-- 실시간 알림 배너 -->
+      <div id="realtimeAlerts" class="realtime-alerts-container"></div>
+
+      <!-- 상태 카드 -->
+      <section class="status-cards">
+        <div class="card">
+          <div class="card-header">총 요청 수</div>
+          <div class="card-value" id="totalRequests">-</div>
+          <div class="card-footer">전체 요청</div>
+        </div>
+        <div class="card" id="errorRateCard">
+          <div class="card-header">오류율</div>
+          <div class="card-value" id="errorRate">-</div>
+          <div class="card-footer" id="errorRateFooter">-</div>
+        </div>
+        <div class="card" id="responseTimeCard">
+          <div class="card-header">평균 응답 시간</div>
+          <div class="card-value" id="avgResponseTime">-</div>
+          <div class="card-footer">밀리초</div>
+        </div>
+        <div class="card">
+          <div class="card-header">초당 요청 수</div>
+          <div class="card-value" id="requestsPerSecond">-</div>
+          <div class="card-footer">RPS</div>
+        </div>
+        <div class="card">
+          <div class="card-header">상태</div>
+          <div class="card-value" id="healthStatus">-</div>
+          <div class="card-footer" id="uptime">-</div>
+        </div>
+      </section>
+
+      <!-- 최근 요청 로그 (강조) -->
+      <section class="requests-section">
+        <div class="section-header">
+          <h2>📝 최근 요청 로그</h2>
+          <div class="quick-filters">
+            <button class="filter-btn active" data-filter="all">전체</button>
+            <button class="filter-btn" data-filter="errors">오류만</button>
+            <button class="filter-btn" data-filter="slow">느린 요청</button>
+          </div>
+        </div>
+        
+        <div class="requests-controls">
+          <div class="control-group">
+            <label for="requestLimit">표시 개수:</label>
+            <select id="requestLimit">
+              <option value="10">10개</option>
+              <option value="20" selected>20개</option>
+              <option value="50">50개</option>
+              <option value="100">100개</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="filter-checkbox">
+              <input type="checkbox" id="hideMonitoringRequests" checked />
+              모니터링 API 숨기기
+            </label>
+            <label class="filter-checkbox">
+              <input type="checkbox" id="hideFavicon" checked />
+              favicon 숨기기
+            </label>
+          </div>
+        </div>
+
+        <div class="requests-table-container">
+          <table class="requests-table">
+            <thead>
+              <tr>
+                <th>시간</th>
+                <th>메서드</th>
+                <th>경로</th>
+                <th>상태</th>
+                <th>응답 시간</th>
+              </tr>
+            </thead>
+            <tbody id="requestsTableBody">
+              <tr><td colspan="5">데이터 로딩 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 상세 통계 (접기/펼치기) -->
+      <section class="stats-section collapsible">
+        <div class="section-toggle" onclick="toggleStatsSection()">
+          <h2>📊 상세 통계</h2>
+          <span class="toggle-icon" id="statsToggleIcon">▼</span>
+        </div>
+        <div class="stats-content" id="statsContent" style="display: none;">
+          <div class="stats-grid">
+            <div class="stats-box">
+              <h3>응답 시간 백분위수</h3>
+              <div class="percentile-stats" id="percentileStats">-</div>
+            </div>
+            <div class="stats-box">
+              <h3>상태 코드 분포</h3>
+              <div class="status-codes" id="statusCodes">-</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      let autoRefreshInterval = null;
+      let currentFilter = 'all';
+      let allRequests = [];
+
+      // 페이지 로드 시 데이터 로드
+      document.addEventListener('DOMContentLoaded', function() {
+        loadMonitoringData();
+        loadAlerts();
+        
+        // 새로고침 버튼
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+          loadMonitoringData();
+          loadAlerts();
+        });
+        
+        // 자동 새로고침
+        document.getElementById('autoRefresh').addEventListener('change', function(e) {
+          if (e.target.checked) {
+            autoRefreshInterval = setInterval(function() {
+              loadMonitoringData();
+              loadAlerts();
+            }, 5000);
+          } else {
+            if (autoRefreshInterval) {
+              clearInterval(autoRefreshInterval);
+              autoRefreshInterval = null;
+            }
+          }
+        });
+
+        // 필터 체크박스
+        document.getElementById('hideMonitoringRequests').addEventListener('change', applyFilters);
+        document.getElementById('hideFavicon').addEventListener('change', applyFilters);
+        document.getElementById('requestLimit').addEventListener('change', function() {
+          loadMonitoringData();
+        });
+
+        // 빠른 필터 버튼
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentFilter = this.dataset.filter;
+            applyFilters();
+          });
+        });
+      });
+
+      // 상세 통계 접기/펼치기
+      function toggleStatsSection() {
+        const content = document.getElementById('statsContent');
+        const icon = document.getElementById('statsToggleIcon');
+        if (content.style.display === 'none') {
+          content.style.display = 'block';
+          icon.textContent = '▲';
+        } else {
+          content.style.display = 'none';
+          icon.textContent = '▼';
+        }
+      }
+
+      // 모니터링 데이터 로드
+      async function loadMonitoringData() {
+        try {
+          // 통계 데이터
+          const statsResponse = await fetch('/monitoring/stats');
+          const stats = await statsResponse.json();
+          updateStats(stats);
+
+          // 최근 요청
+          const limit = parseInt(document.getElementById('requestLimit').value) || 20;
+          const requestsResponse = await fetch(`/monitoring/requests?limit=${limit}`);
+          const requests = await requestsResponse.json();
+          allRequests = requests;
+          applyFilters();
+
+          // 헬스 체크
+          const healthResponse = await fetch('/health');
+          const health = await healthResponse.json();
+          updateHealthStatus(health, stats);
+        } catch (error) {
+          console.error('데이터 로드 오류:', error);
+        }
+      }
+
+      // 통계 업데이트
+      function updateStats(stats) {
+        document.getElementById('totalRequests').textContent = 
+          stats.total_requests?.toLocaleString() || '0';
+        
+        const errorRate = (stats.error_rate * 100).toFixed(2);
+        const errorRateEl = document.getElementById('errorRate');
+        errorRateEl.textContent = errorRate + '%';
+        document.getElementById('errorRateFooter').textContent = 
+          `${stats.total_errors || 0}개 오류`;
+        
+        // 오류율에 따른 카드 색상 변경
+        const errorCard = document.getElementById('errorRateCard');
+        if (stats.error_rate > 0.1) {
+          errorCard.classList.add('card-warning');
+        } else if (stats.error_rate > 0.05) {
+          errorCard.classList.add('card-caution');
+        } else {
+          errorCard.classList.remove('card-warning', 'card-caution');
+        }
+        
+        const avgTime = stats.average_response_time_ms || 0;
+        document.getElementById('avgResponseTime').textContent = avgTime.toFixed(2);
+        
+        // 응답 시간에 따른 카드 색상 변경
+        const responseCard = document.getElementById('responseTimeCard');
+        if (avgTime > 1000) {
+          responseCard.classList.add('card-warning');
+        } else if (avgTime > 500) {
+          responseCard.classList.add('card-caution');
+        } else {
+          responseCard.classList.remove('card-warning', 'card-caution');
+        }
+        
+        document.getElementById('requestsPerSecond').textContent = 
+          stats.requests_per_second?.toFixed(2) || '0';
+
+        // 백분위수
+        if (stats.response_time_percentiles) {
+          const p = stats.response_time_percentiles;
+          document.getElementById('percentileStats').innerHTML = `
+            <div>P50: <strong>${p.p50?.toFixed(2)}ms</strong></div>
+            <div>P95: <strong>${p.p95?.toFixed(2)}ms</strong></div>
+            <div>P99: <strong>${p.p99?.toFixed(2)}ms</strong></div>
+          `;
+        }
+
+        // 상태 코드
+        if (stats.status_codes) {
+          const codes = Object.entries(stats.status_codes)
+            .map(([code, count]) => `<span class="status-code status-${code}">${code}: ${count}</span>`)
+            .join('');
+          document.getElementById('statusCodes').innerHTML = codes || '-';
+        }
+      }
+
+      // 필터 적용
+      function applyFilters() {
+        if (!allRequests || allRequests.length === 0) return;
+
+        const hideMonitoring = document.getElementById('hideMonitoringRequests').checked;
+        const hideFavicon = document.getElementById('hideFavicon').checked;
+        const monitoringPaths = ['/monitoring/stats', '/monitoring/requests', '/monitoring/endpoints', '/health'];
+
+        let filtered = [...allRequests].reverse();
+
+        // 모니터링 API 필터
+        if (hideMonitoring) {
+          filtered = filtered.filter(req => 
+            !monitoringPaths.some(path => req.path.startsWith(path))
+          );
+        }
+
+        // favicon 필터
+        if (hideFavicon) {
+          filtered = filtered.filter(req => req.path !== '/favicon.ico');
+        }
+
+        // 빠른 필터 적용
+        if (currentFilter === 'errors') {
+          filtered = filtered.filter(req => req.error_occurred || req.status_code >= 400);
+        } else if (currentFilter === 'slow') {
+          filtered = filtered.filter(req => req.duration_ms > 1000);
+        }
+
+        updateRequestsTable(filtered);
+      }
+
+      // 요청 테이블 업데이트
+      function updateRequestsTable(requests) {
+        const tbody = document.getElementById('requestsTableBody');
+        if (!requests || requests.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5">표시할 요청이 없습니다.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = requests.map(req => {
+          const date = new Date(req.datetime);
+          const timeStr = date.toLocaleTimeString('ko-KR');
+          const statusClass = req.status_code >= 500 ? 'status-error' : 
+                             req.status_code >= 400 ? 'status-warning' : 'status-success';
+          
+          const isMonitoringRequest = ['/monitoring/stats', '/monitoring/requests', '/monitoring/endpoints', '/health'].some(path => req.path.startsWith(path));
+          const rowClass = req.error_occurred ? 'error-row' : 
+                          (req.duration_ms > 1000 ? 'slow-row' : '') ||
+                          (isMonitoringRequest ? 'monitoring-row' : '');
+          
+          return `
+            <tr class="${rowClass}">
+              <td>${timeStr}</td>
+              <td><span class="method-badge method-${req.method.toLowerCase()}">${req.method}</span></td>
+              <td>${req.path}</td>
+              <td><span class="status-badge ${statusClass}">${req.status_code}</span></td>
+              <td class="${req.duration_ms > 1000 ? 'slow-time' : ''}">${req.duration_ms.toFixed(2)}ms</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // 알림 로드
+      async function loadAlerts() {
+        try {
+          const response = await fetch('/api/alerts?limit=5&unread_only=true');
+          const alerts = await response.json();
+          displayRealtimeAlerts(alerts);
+        } catch (error) {
+          console.error('알림 로드 오류:', error);
+        }
+      }
+
+      // 실시간 알림 표시
+      function displayRealtimeAlerts(alerts) {
+        const container = document.getElementById('realtimeAlerts');
+        
+        if (!alerts || alerts.length === 0) {
+          container.innerHTML = '';
+          return;
+        }
+
+        container.innerHTML = alerts.map(alert => {
+          const date = new Date(alert.datetime);
+          const timeStr = date.toLocaleTimeString('ko-KR');
+          const alertClass = alert.type === 'error' ? 'alert-error' : 
+                            alert.type === 'warning' ? 'alert-warning' : 'alert-info';
+          
+          return `
+            <div class="realtime-alert ${alertClass}" data-alert-id="${alert.id}">
+              <div class="alert-header">
+                <span class="alert-type-icon">${alert.type === 'error' ? '🚨' : '⚠️'}</span>
+                <span class="alert-title">${alert.title}</span>
+                <span class="alert-time">${timeStr}</span>
+                <button class="alert-close-btn" onclick="markAlertRead('${alert.id}')">×</button>
+              </div>
+              <div class="alert-body">
+                <p>${alert.message}</p>
+                ${alert.details.path ? `<small>경로: ${alert.details.path} | 상태 코드: ${alert.details.status_code || 'N/A'}</small>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 알림 읽음 처리
+      async function markAlertRead(alertId) {
+        try {
+          await fetch(`/api/alerts/${alertId}/read`, { method: 'POST' });
+          loadAlerts();
+        } catch (error) {
+          console.error('알림 읽음 처리 오류:', error);
+        }
+      }
+
+      // 헬스 상태 업데이트 및 경고 표시
+      function updateHealthStatus(health, stats) {
+        const statusEl = document.getElementById('healthStatus');
+        const status = health.status || 'unknown';
+        statusEl.textContent = status.toUpperCase();
+        statusEl.className = `health-status health-${status}`;
+        
+        const uptime = Math.floor(health.uptime_seconds || 0);
+        const hours = Math.floor(uptime / 3600);
+        const minutes = Math.floor((uptime % 3600) / 60);
+        const seconds = uptime % 60;
+        document.getElementById('uptime').textContent = 
+          `가동 시간: ${hours}시간 ${minutes}분 ${seconds}초`;
+
+        // 경고 배너 표시
+        const alertBanner = document.getElementById('alertBanner');
+        const errorRate = stats.error_rate || 0;
+        const avgTime = stats.average_response_time_ms || 0;
+        
+        let alerts = [];
+        if (errorRate > 0.1) {
+          alerts.push({ type: 'error', message: `⚠️ 오류율이 높습니다: ${(errorRate * 100).toFixed(2)}%` });
+        } else if (errorRate > 0.05) {
+          alerts.push({ type: 'warning', message: `⚠️ 오류율 주의: ${(errorRate * 100).toFixed(2)}%` });
+        }
+        if (avgTime > 1000) {
+          alerts.push({ type: 'warning', message: `⏱️ 평균 응답 시간이 느립니다: ${avgTime.toFixed(2)}ms` });
+        }
+
+        if (alerts.length > 0) {
+          alertBanner.innerHTML = alerts.map(a => `<div class="alert alert-${a.type}">${a.message}</div>`).join('');
+          alertBanner.style.display = 'block';
+        } else {
+          alertBanner.style.display = 'none';
+        }
+      }
+    </script>
+  </body>
+</html>

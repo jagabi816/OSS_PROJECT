@@ -7,294 +7,155 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   </head>
   <body>
-    <div class="container">
-      <header>
-        <h1>🔍 Flask Monitoring Dashboard</h1>
-        <div class="header-controls">
-          <button id="refreshBtn" class="btn btn-primary">새로고침</button>
-          <label class="auto-refresh">
-            <input type="checkbox" id="autoRefresh" />
-            자동 새로고침 (5초)
-          </label>
-        </div>
+    <div class="main-container">
+      <header class="main-header">
+        <h1>🚀 Flask 웹 애플리케이션</h1>
+        <p class="subtitle">모니터링 기능이 통합된 Flask 애플리케이션</p>
       </header>
 
-      <!-- 상태 카드 -->
-      <section class="status-cards">
-        <div class="card">
-          <div class="card-header">총 요청 수</div>
-          <div class="card-value" id="totalRequests">-</div>
-          <div class="card-footer">전체 요청</div>
-        </div>
-        <div class="card">
-          <div class="card-header">오류율</div>
-          <div class="card-value" id="errorRate">-</div>
-          <div class="card-footer" id="errorRateFooter">-</div>
-        </div>
-        <div class="card">
-          <div class="card-header">평균 응답 시간</div>
-          <div class="card-value" id="avgResponseTime">-</div>
-          <div class="card-footer">밀리초</div>
-        </div>
-        <div class="card">
-          <div class="card-header">초당 요청 수</div>
-          <div class="card-value" id="requestsPerSecond">-</div>
-          <div class="card-footer">RPS</div>
-        </div>
-        <div class="card">
-          <div class="card-header">상태</div>
-          <div class="card-value" id="healthStatus">-</div>
-          <div class="card-footer" id="uptime">-</div>
-        </div>
-      </section>
+      <!-- 알림 배너 -->
+      <div id="alertBanner" class="alert-banner-main" style="display: none;"></div>
 
-      <!-- 테스트 섹션 -->
-      <section class="test-section">
-        <h2>🧪 테스트 기능</h2>
-        <div class="test-buttons">
-          <button class="btn btn-success" onclick="testRequest('/test/normal')">
-            정상 요청 테스트
-          </button>
-          <button class="btn btn-warning" onclick="testRequest('/test/slow')">
-            느린 요청 테스트 (1-3초)
-          </button>
-          <button class="btn btn-danger" onclick="testRequest('/test/error')">
-            오류 발생 테스트
-          </button>
-          <button class="btn btn-danger" onclick="testRequest('/test/notfound')">
-            404 오류 테스트
-          </button>
-          <button class="btn btn-danger" onclick="testRequest('/test/server-error')">
-            500 오류 테스트
-          </button>
-        </div>
-        <div id="testResult" class="test-result"></div>
-      </section>
+      <main class="main-content">
+        <section class="welcome-section">
+          <h2>환영합니다!</h2>
+          <p>이것은 Flask로 만든 웹 애플리케이션입니다.</p>
+          <p>모니터링 기능을 통해 서버 상태를 실시간으로 확인할 수 있습니다.</p>
+        </section>
 
-      <!-- 상세 통계 -->
-      <section class="stats-section">
-        <h2>📊 상세 통계</h2>
-        <div class="stats-grid">
-          <div class="stats-box">
-            <h3>응답 시간 백분위수</h3>
-            <div class="percentile-stats" id="percentileStats">-</div>
+        <section class="test-section">
+          <h2>🧪 테스트 기능</h2>
+          <p class="section-description">다양한 요청을 보내서 모니터링 기능을 테스트해보세요.</p>
+          
+          <div class="test-buttons">
+            <button class="btn btn-success" onclick="testRequest('/test/normal')">
+              ✅ 정상 요청 테스트
+            </button>
+            <button class="btn btn-warning" onclick="testRequest('/test/slow')">
+              ⏱️ 느린 요청 테스트 (1-3초)
+            </button>
+            <button class="btn btn-danger" onclick="testRequest('/test/error')">
+              ❌ 오류 발생 테스트
+            </button>
+            <button class="btn btn-danger" onclick="testRequest('/test/notfound')">
+              🔍 404 오류 테스트
+            </button>
+            <button class="btn btn-danger" onclick="testRequest('/test/server-error')">
+              ⚠️ 500 오류 테스트
+            </button>
           </div>
-          <div class="stats-box">
-            <h3>상태 코드 분포</h3>
-            <div class="status-codes" id="statusCodes">-</div>
-          </div>
-          <div class="stats-box">
-            <h3>상위 경로</h3>
-            <div class="top-paths" id="topPaths">-</div>
-          </div>
-          <div class="stats-box">
-            <h3>오류 타입</h3>
-            <div class="error-types" id="errorTypes">-</div>
-          </div>
-        </div>
-      </section>
 
-      <!-- 최근 요청 로그 -->
-      <section class="requests-section">
-        <h2>📝 최근 요청 로그</h2>
-        <div class="requests-controls">
-          <input type="number" id="requestLimit" value="20" min="1" max="100" />
-          <label for="requestLimit">개 요청 표시</label>
-        </div>
-        <div class="requests-table-container">
-          <table class="requests-table">
-            <thead>
-              <tr>
-                <th>시간</th>
-                <th>메서드</th>
-                <th>경로</th>
-                <th>상태</th>
-                <th>응답 시간</th>
-                <th>엔드포인트</th>
-              </tr>
-            </thead>
-            <tbody id="requestsTableBody">
-              <tr><td colspan="6">데이터 로딩 중...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <div id="testResult" class="test-result"></div>
+        </section>
 
-      <!-- 엔드포인트별 통계 -->
-      <section class="endpoints-section">
-        <h2>🔗 엔드포인트별 통계</h2>
-        <div id="endpointsStats" class="endpoints-stats">-</div>
-      </section>
+        <section class="monitoring-link-section">
+          <div class="monitoring-card">
+            <h3>📊 모니터링 대시보드</h3>
+            <p>서버 상태, 요청 통계, 오류 로그 등을 확인하세요.</p>
+            <a href="/monitoring" class="btn btn-primary btn-large">
+              모니터링 대시보드 열기 →
+            </a>
+          </div>
+        </section>
+      </main>
+
+      <footer class="main-footer">
+        <p>Flask Monitoring Extension Project</p>
+      </footer>
     </div>
 
     <script>
-      let autoRefreshInterval = null;
+      let alertCheckInterval = null;
 
-      // 페이지 로드 시 데이터 로드
+      // 페이지 로드 시 알림 확인
       document.addEventListener('DOMContentLoaded', function() {
-        loadMonitoringData();
+        loadAlerts();
         
-        // 새로고침 버튼
-        document.getElementById('refreshBtn').addEventListener('click', loadMonitoringData);
-        
-        // 자동 새로고침
-        document.getElementById('autoRefresh').addEventListener('change', function(e) {
-          if (e.target.checked) {
-            autoRefreshInterval = setInterval(loadMonitoringData, 5000);
-          } else {
-            if (autoRefreshInterval) {
-              clearInterval(autoRefreshInterval);
-              autoRefreshInterval = null;
-            }
-          }
-        });
+        // 주기적으로 알림 확인 (5초마다)
+        alertCheckInterval = setInterval(loadAlerts, 5000);
       });
 
-      // 모니터링 데이터 로드
-      async function loadMonitoringData() {
+      let lastAlertCount = 0;
+
+      // 알림 로드
+      async function loadAlerts() {
         try {
-          // 통계 데이터
-          const statsResponse = await fetch('/monitoring/stats');
-          const stats = await statsResponse.json();
-          updateStats(stats);
-
-          // 최근 요청
-          const limit = parseInt(document.getElementById('requestLimit').value) || 20;
-          const requestsResponse = await fetch(`/monitoring/requests?limit=${limit}`);
-          const requests = await requestsResponse.json();
-          updateRequestsTable(requests);
-
-          // 엔드포인트 통계
-          const endpointsResponse = await fetch('/monitoring/endpoints');
-          const endpoints = await endpointsResponse.json();
-          updateEndpointsStats(endpoints);
-
-          // 헬스 체크
-          const healthResponse = await fetch('/health');
-          const health = await healthResponse.json();
-          updateHealthStatus(health);
-        } catch (error) {
-          console.error('데이터 로드 오류:', error);
-        }
-      }
-
-      // 통계 업데이트
-      function updateStats(stats) {
-        document.getElementById('totalRequests').textContent = 
-          stats.total_requests?.toLocaleString() || '0';
-        
-        const errorRate = (stats.error_rate * 100).toFixed(2);
-        document.getElementById('errorRate').textContent = errorRate + '%';
-        document.getElementById('errorRateFooter').textContent = 
-          `${stats.total_errors || 0}개 오류`;
-        
-        document.getElementById('avgResponseTime').textContent = 
-          stats.average_response_time_ms?.toFixed(2) || '0';
-        
-        document.getElementById('requestsPerSecond').textContent = 
-          stats.requests_per_second?.toFixed(2) || '0';
-
-        // 백분위수
-        if (stats.response_time_percentiles) {
-          const p = stats.response_time_percentiles;
-          document.getElementById('percentileStats').innerHTML = `
-            <div>P50: <strong>${p.p50?.toFixed(2)}ms</strong></div>
-            <div>P95: <strong>${p.p95?.toFixed(2)}ms</strong></div>
-            <div>P99: <strong>${p.p99?.toFixed(2)}ms</strong></div>
-          `;
-        }
-
-        // 상태 코드
-        if (stats.status_codes) {
-          const codes = Object.entries(stats.status_codes)
-            .map(([code, count]) => `<span class="status-code status-${code}">${code}: ${count}</span>`)
-            .join('');
-          document.getElementById('statusCodes').innerHTML = codes || '-';
-        }
-
-        // 상위 경로
-        if (stats.top_paths) {
-          const paths = Object.entries(stats.top_paths)
-            .map(([path, count]) => `<div>${path}: <strong>${count}</strong></div>`)
-            .join('');
-          document.getElementById('topPaths').innerHTML = paths || '-';
-        }
-
-        // 오류 타입
-        if (stats.error_types && Object.keys(stats.error_types).length > 0) {
-          const errors = Object.entries(stats.error_types)
-            .map(([type, count]) => `<div>${type}: <strong>${count}</strong></div>`)
-            .join('');
-          document.getElementById('errorTypes').innerHTML = errors;
-        } else {
-          document.getElementById('errorTypes').textContent = '오류 없음';
-        }
-      }
-
-      // 요청 테이블 업데이트
-      function updateRequestsTable(requests) {
-        const tbody = document.getElementById('requestsTableBody');
-        if (!requests || requests.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6">요청 데이터가 없습니다.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = requests.reverse().map(req => {
-          const date = new Date(req.datetime);
-          const timeStr = date.toLocaleTimeString('ko-KR');
-          const statusClass = req.status_code >= 500 ? 'status-error' : 
-                             req.status_code >= 400 ? 'status-warning' : 'status-success';
+          const response = await fetch('/api/alerts?limit=5&unread_only=true');
+          const alerts = await response.json();
           
-          return `
-            <tr class="${req.error_occurred ? 'error-row' : ''}">
-              <td>${timeStr}</td>
-              <td><span class="method-badge method-${req.method.toLowerCase()}">${req.method}</span></td>
-              <td>${req.path}</td>
-              <td><span class="status-badge ${statusClass}">${req.status_code}</span></td>
-              <td>${req.duration_ms.toFixed(2)}ms</td>
-              <td>${req.endpoint || '-'}</td>
-            </tr>
-          `;
-        }).join('');
+          // 알림이 새로 추가되었는지 확인
+          const currentCount = alerts ? alerts.length : 0;
+          const hasNewAlerts = currentCount > lastAlertCount;
+          lastAlertCount = currentCount;
+          
+          displayAlerts(alerts, hasNewAlerts);
+        } catch (error) {
+          console.error('알림 로드 오류:', error);
+        }
       }
 
-      // 엔드포인트 통계 업데이트
-      function updateEndpointsStats(endpoints) {
-        const container = document.getElementById('endpointsStats');
-        if (!endpoints || Object.keys(endpoints).length === 0) {
-          container.textContent = '엔드포인트 데이터가 없습니다.';
+      // 알림 표시
+      function displayAlerts(alerts, isNew = false) {
+        const banner = document.getElementById('alertBanner');
+        
+        if (!alerts || alerts.length === 0) {
+          banner.style.display = 'none';
           return;
         }
 
-        container.innerHTML = Object.entries(endpoints).map(([endpoint, stats]) => `
-          <div class="endpoint-item">
-            <h4>${endpoint}</h4>
-            <div class="endpoint-details">
-              <div>요청 수: <strong>${stats.request_count}</strong></div>
-              <div>평균 응답 시간: <strong>${stats.average_response_time_ms.toFixed(2)}ms</strong></div>
-              <div>오류 수: <strong>${stats.error_count}</strong> (${(stats.error_rate * 100).toFixed(2)}%)</div>
-              <div>최소/최대: ${stats.min_response_time_ms.toFixed(2)}ms / ${stats.max_response_time_ms.toFixed(2)}ms</div>
+        const unreadCount = alerts.length;
+        const latestAlert = alerts[0];
+        
+        // 새 알림이 있으면 애니메이션 효과
+        if (isNew) {
+          banner.style.animation = 'none';
+          setTimeout(() => {
+            banner.style.animation = 'slideDown 0.3s ease';
+          }, 10);
+        }
+        
+        banner.innerHTML = `
+          <div class="alert-content">
+            <div class="alert-icon">🔔</div>
+            <div class="alert-text">
+              <strong>${latestAlert.title}</strong>
+              <span>${latestAlert.message}</span>
+              ${unreadCount > 1 ? `<span class="alert-count">+${unreadCount - 1}개 더</span>` : ''}
+            </div>
+            <div class="alert-actions">
+              <a href="/monitoring" class="btn-alert">자세히 보기</a>
+              <button class="btn-alert-close" onclick="markAllRead()">모두 읽음</button>
             </div>
           </div>
-        `).join('');
-      }
-
-      // 헬스 상태 업데이트
-      function updateHealthStatus(health) {
-        const statusEl = document.getElementById('healthStatus');
-        const status = health.status || 'unknown';
-        statusEl.textContent = status.toUpperCase();
-        statusEl.className = `health-status health-${status}`;
+        `;
+        banner.style.display = 'block';
+        banner.className = `alert-banner-main alert-${latestAlert.type}`;
         
-        const uptime = Math.floor(health.uptime_seconds || 0);
-        const hours = Math.floor(uptime / 3600);
-        const minutes = Math.floor((uptime % 3600) / 60);
-        const seconds = uptime % 60;
-        document.getElementById('uptime').textContent = 
-          `가동 시간: ${hours}시간 ${minutes}분 ${seconds}초`;
+        // 새 알림이 있으면 브라우저 알림 (권한 요청 필요)
+        if (isNew && Notification.permission === 'granted') {
+          new Notification(latestAlert.title, {
+            body: latestAlert.message,
+            icon: '/static/favicon.ico'
+          });
+        }
       }
 
-      // 테스트 요청
+      // 모든 알림 읽음 처리
+      async function markAllRead() {
+        try {
+          await fetch('/api/alerts/read-all', { method: 'POST' });
+          loadAlerts();
+        } catch (error) {
+          console.error('알림 읽음 처리 오류:', error);
+        }
+      }
+
+      // 브라우저 알림 권한 요청
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+
+      // 테스트 요청 함수
       async function testRequest(url) {
         const resultDiv = document.getElementById('testResult');
         resultDiv.innerHTML = '<div class="loading">요청 중...</div>';
@@ -321,9 +182,12 @@
               <div class="test-error">
                 <strong>❌ 오류 발생</strong><br>
                 상태 코드: ${response.status}<br>
-                응답 시간: ${duration}ms
+                응답 시간: ${duration}ms<br>
+                <small>모니터링 대시보드에서 상세 정보를 확인하세요.</small>
               </div>
             `;
+            // 오류 발생 시 즉시 알림 확인
+            setTimeout(loadAlerts, 500);
           }
         } catch (error) {
           const endTime = Date.now();
@@ -332,13 +196,13 @@
             <div class="test-error">
               <strong>❌ 오류 발생</strong><br>
               ${error.message}<br>
-              응답 시간: ${duration}ms
+              응답 시간: ${duration}ms<br>
+              <small>모니터링 대시보드에서 상세 정보를 확인하세요.</small>
             </div>
           `;
+          // 오류 발생 시 즉시 알림 확인
+          setTimeout(loadAlerts, 500);
         }
-        
-        // 데이터 새로고침
-        setTimeout(loadMonitoringData, 500);
       }
     </script>
   </body>
