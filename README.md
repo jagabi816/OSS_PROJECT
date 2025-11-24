@@ -55,16 +55,55 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Flask 및 필요한 패키지 설치
-pip install flask werkzeug jinja2
+pip install flask werkzeug jinja2 apscheduler
 ```
 
-### 3. 애플리케이션 실행
+### 3. 개인 설정 (필수)
+
+애플리케이션을 실행하기 전에 `mywebapp/application.py` 파일에서 개인 정보를 설정해야 합니다.
+
+#### 3-1. Discord 웹훅 설정 (선택사항)
+
+오류 발생 시 Discord로 알림을 받으려면:
+
+1. Discord 서버 설정 > 연동 > 웹후크 > 새 웹후크 만들기
+2. 웹후크 URL 복사
+3. `application.py` 파일에서 다음 부분을 수정:
+   ```python
+   DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/여기에_실제_URL_입력"
+   ```
+   - 웹훅을 사용하지 않으려면: `DISCORD_WEBHOOK_URL = None`
+
+#### 3-2. 이메일 보고서 설정 (선택사항)
+
+주간 이메일 보고서를 받으려면:
+
+1. Gmail 앱 비밀번호 생성:
+   - Google 계정 > 보안 > 2단계 인증 활성화
+   - 보안 > 앱 비밀번호 > 메일 선택 > 기기 선택 > 생성
+   - 생성된 16자리 비밀번호 복사 (공백 포함, 예: `abcd efgh ijkl mnop`)
+
+2. `application.py` 파일에서 다음 부분을 수정:
+   ```python
+   EMAIL_CONFIG = {
+       "smtp_server": "smtp.gmail.com",
+       "smtp_port": 587,
+       "sender_email": "본인의_Gmail_주소@gmail.com",  # 실제 이메일 주소 입력
+       "sender_password": "생성한_앱_비밀번호",  # 실제 앱 비밀번호 입력 (공백 포함)
+       "recipients": ["수신할_이메일@gmail.com"],  # 실제 수신자 이메일 입력
+       "schedule_day": "monday",  # 매주 월요일
+       "schedule_time": "09:00"  # 오전 9시
+   }
+   ```
+   - 이메일 보고서를 사용하지 않으려면: `sender_email`과 `recipients`를 빈 문자열로 설정
+
+### 4. 애플리케이션 실행
 ```bash
 cd mywebapp
 python application.py
 ```
 
-### 4. 브라우저에서 접속
+### 5. 브라우저에서 접속
 ```
 http://127.0.0.1:5000
 ```

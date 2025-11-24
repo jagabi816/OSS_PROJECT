@@ -6,34 +6,43 @@ import random
 # Flask 앱 생성
 app = Flask(__name__)
 
-# 디스코드 웹훅 설정 (선택사항 - 환경 변수나 설정 파일에서 가져올 수 있음)
-# 디스코드 웹훅 URL을 설정하려면 아래 주석을 해제하고 URL을 입력하세요
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1442060592566505585/AcSj-8phc-ONcaG4z7l658_E073eJ9zdzjpXG86kSmVutts2wG9QP6dSC-3gnngiPsgx"
+# 디스코드 웹훅 설정 (선택사항)
+# 디스코드 웹훅 URL을 설정하려면 아래에 실제 URL을 입력하세요
+# 웹훅 생성 방법: Discord 서버 설정 > 연동 > 웹후크 > 새 웹후크 만들기
+DISCORD_WEBHOOK_URL = "{DISCORD_WEBHOOK_URL}"  # 예: "https://discord.com/api/webhooks/..."
 
 # 웹훅 알림 설정
-if DISCORD_WEBHOOK_URL:
+if DISCORD_WEBHOOK_URL and DISCORD_WEBHOOK_URL != "{DISCORD_WEBHOOK_URL}":
     app.setup_webhook_notifier(webhook_url=DISCORD_WEBHOOK_URL, enabled=True)
     print(f"✅ 디스코드 웹훅 알림이 활성화되었습니다.")
 
 # 주간 이메일 보고서 설정 (선택사항)
+# Gmail 사용 시 앱 비밀번호가 필요합니다. (Google 계정 > 보안 > 2단계 인증 > 앱 비밀번호)
 EMAIL_CONFIG = {
     "smtp_server": "smtp.gmail.com",  # Gmail SMTP 서버
     "smtp_port": 587,
-    "sender_email": "jukhap2@gmail.com",  # 발신자 이메일 (예: "your-email@gmail.com")
-    "sender_password": "somp hpgo dvgk lkvb",  # Gmail 앱 비밀번호
-    "recipients": ["jukhap2@gmail.com"],  # 수신자 이메일 목록 (자신의 이메일 주소 입력)
+    "sender_email": "{본인이메일}",  # 발신자 이메일 (예: "your-email@gmail.com")
+    "sender_password": "{GMAIL_APP_PASSWORD}",  # Gmail 앱 비밀번호 (공백 포함 문자열, 예: "abcd efgh ijkl mnop")
+    "recipients": ["{본인이메일}"],  # 수신자 이메일 목록 (자신의 이메일 주소 입력)
     "schedule_day": "monday",  # 매주 월요일
     "schedule_time": "09:00"  # 오전 9시
 }
 
 # 주간 보고서 활성화
-if EMAIL_CONFIG.get("sender_email") and EMAIL_CONFIG.get("recipients"):
+sender_email = EMAIL_CONFIG.get("sender_email", "")
+sender_password = EMAIL_CONFIG.get("sender_password", "")
+recipients = EMAIL_CONFIG.get("recipients", [])
+
+# 플레이스홀더가 아닌 실제 값이 입력되었는지 확인
+if (sender_email and sender_email != "{본인이메일}" and 
+    sender_password and sender_password != "{GMAIL_APP_PASSWORD}" and
+    recipients and recipients != ["{본인이메일}"]):
     app.setup_weekly_reporting(
         smtp_server=EMAIL_CONFIG["smtp_server"],
         smtp_port=EMAIL_CONFIG["smtp_port"],
-        sender_email=EMAIL_CONFIG["sender_email"],
-        sender_password=EMAIL_CONFIG["sender_password"],
-        recipients=EMAIL_CONFIG["recipients"],
+        sender_email=sender_email,
+        sender_password=sender_password,
+        recipients=recipients,
         schedule_day=EMAIL_CONFIG["schedule_day"],
         schedule_time=EMAIL_CONFIG["schedule_time"]
     )
