@@ -1488,8 +1488,20 @@ class Flask(App):
             a list of headers, and an optional exception context to
             start the response.
         """
+        import time
         ctx = self.request_context(environ)
         error: BaseException | None = None
+        request_start_time = None
+        path = None
+        method = None
+        status_code = None
+        
+        # 모니터링: 요청 시작 시간 기록
+        if self._monitoring_enabled:
+            request_start_time = time.time()
+            path = environ.get("PATH_INFO", "/")
+            method = environ.get("REQUEST_METHOD", "GET")
+        
         try:
             try:
                 ctx.push()
@@ -1502,6 +1514,109 @@ class Flask(App):
                 raise
             return response(environ, start_response)
         finally:
+            # 모니터링: 요청 기록
+            if self._monitoring_enabled and request_start_time is not None:
+                try:
+                    request_duration = (time.time() - request_start_time) * 1000  # 밀리초
+                    
+                    # 응답 상태 코드 가져오기
+                    try:
+                        # Flask Response 객체인 경우
+                        if hasattr(response, "status_code"):
+                            status_code = response.status_code
+                        # request context에서 가져오기
+                        elif hasattr(ctx, 'request') and hasattr(ctx.request, 'response') and hasattr(ctx.request.response, 'status_code'):
+                            status_code = ctx.request.response.status_code
+                        else:
+                            # 기본값 (오류가 있으면 500, 없으면 200)
+                            status_code = 500 if error is not None else 200
+                    except:
+                        # 오류 발생 시 기본값
+                        status_code = 500 if error is not None else 200
+                    
+                    # 오류 발생 여부 확인
+                    error_occurred = error is not None or status_code >= 400
+                    error_type = None
+                    if error is not None:
+                        error_type = type(error).__name__
+                    
+                    # 요청 기록
+                    self._monitoring.record_request(
+                        path=path or "/",
+                        method=method or "GET",
+                        status_code=status_code or 200,
+                        duration=request_duration,
+                        error_occurred=error_occurred,
+                        error_type=error_type
+                    )
+                    
+                    # 알림: 오류 발생 시 알림 발송
+                    if self._notifications_enabled and error_occurred:
+                        if error is not None:
+                            # 예외 발생
+                            alert_id = self._alert_manager.add_alert(
+                                alert_type="error",
+                                title="예외 발생",
+                                message=f"{error_type}: {str(error)}",
+                                details={
+                                    "path": path,
+                                    "method": method,
+                                    "status_code": status_code,
+                                    "error_type": error_type
+                                }
+                            )
+                            # 웹훅 알림 발송
+                            if self._webhook_notifier and self._webhook_notifier.enabled:
+                                self._webhook_notifier.send_alert(
+                                    alert_type="error",
+                                    title="예외 발생",
+                                    message=f"{error_type}: {str(error)}",
+                                    details={
+                                        "path": path,
+                                        "method": method,
+                                        "status_code": status_code,
+                                        "error_type": error_type
+                                    }
+                                )
+                        elif status_code >= 500:
+                            # 서버 오류
+                            alert_id = self._alert_manager.add_alert(
+                                alert_type="error",
+                                title="서버 오류",
+                                message=f"HTTP {status_code} 오류가 발생했습니다.",
+                                details={
+                                    "path": path,
+                                    "method": method,
+                                    "status_code": status_code
+                                }
+                            )
+                            if self._webhook_notifier and self._webhook_notifier.enabled:
+                                self._webhook_notifier.send_alert(
+                                    alert_type="error",
+                                    title="서버 오류",
+                                    message=f"HTTP {status_code} 오류가 발생했습니다.",
+                                    details={
+                                        "path": path,
+                                        "method": method,
+                                        "status_code": status_code
+                                    }
+                                )
+                        elif status_code >= 400:
+                            # 클라이언트 오류 (경고)
+                            alert_id = self._alert_manager.add_alert(
+                                alert_type="warning",
+                                title="클라이언트 오류",
+                                message=f"HTTP {status_code} 오류가 발생했습니다.",
+                                details={
+                                    "path": path,
+                                    "method": method,
+                                    "status_code": status_code
+                                }
+                            )
+                except Exception as e:
+                    # 모니터링 기록 중 오류 발생 시 로그만 출력 (앱 동작에는 영향 없음)
+                    self.logger.exception("Monitoring recording error")
+            
             if "werkzeug.debug.preserve_context" in environ:
                 environ["werkzeug.debug.preserve_context"](_cv_app.get())
 

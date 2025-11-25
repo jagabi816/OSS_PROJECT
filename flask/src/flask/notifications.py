@@ -102,6 +102,42 @@ class WebhookNotifier:
             print(f"웹훅 발송 오류: {e}")
             return False
     
+    def send_alert(
+        self,
+        alert_type: str,
+        title: str,
+        message: str,
+        details: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """알림 발송 (일반적인 인터페이스)
+        
+        Args:
+            alert_type: 알림 타입 ('error', 'warning', 'info')
+            title: 알림 제목
+            message: 알림 메시지
+            details: 추가 상세 정보 (path, status_code, error_type 등)
+            
+        Returns:
+            bool: 발송 성공 여부
+        """
+        if not self.enabled:
+            return False
+        
+        # details에서 정보 추출
+        path = details.get("path") if details else None
+        status_code = details.get("status_code") if details else None
+        error_type = details.get("error_type") if details else None
+        
+        # send_discord_notification 호출
+        return self.send_discord_notification(
+            title=title,
+            description=message,
+            error_type=error_type,
+            path=path,
+            status_code=status_code,
+            timestamp=time.time()
+        )
+    
     def _send_webhook_async(self, payload: Dict[str, Any]) -> None:
         """비동기로 웹훅 발송"""
         try:

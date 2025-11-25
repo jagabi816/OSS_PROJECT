@@ -9,7 +9,7 @@ app = Flask(__name__)
 # 디스코드 웹훅 설정 (선택사항)
 # 디스코드 웹훅 URL을 설정하려면 아래에 실제 URL을 입력하세요
 # 웹훅 생성 방법: Discord 서버 설정 > 연동 > 웹후크 > 새 웹후크 만들기
-DISCORD_WEBHOOK_URL = "{DISCORD_WEBHOOK_URL}"  # 예: "https://discord.com/api/webhooks/..."
+DISCORD_WEBHOOK_URL = "본인 웹훅"
 
 # 웹훅 알림 설정
 if DISCORD_WEBHOOK_URL and DISCORD_WEBHOOK_URL != "{DISCORD_WEBHOOK_URL}":
@@ -21,9 +21,9 @@ if DISCORD_WEBHOOK_URL and DISCORD_WEBHOOK_URL != "{DISCORD_WEBHOOK_URL}":
 EMAIL_CONFIG = {
     "smtp_server": "smtp.gmail.com",  # Gmail SMTP 서버
     "smtp_port": 587,
-    "sender_email": "{본인이메일}",  # 발신자 이메일 (예: "your-email@gmail.com")
-    "sender_password": "{GMAIL_APP_PASSWORD}",  # Gmail 앱 비밀번호 (공백 포함 문자열, 예: "abcd efgh ijkl mnop")
-    "recipients": ["{본인이메일}"],  # 수신자 이메일 목록 (자신의 이메일 주소 입력)
+    "sender_email": "본인 이메일일",  # 발신자 이메일
+    "sender_password": "자신 비밀번호 입력",  # Gmail 앱 비밀번호 (공백 포함 문자열)
+    "recipients": ["본인 이메일"],  # 수신자 이메일 목록
     "schedule_day": "monday",  # 매주 월요일
     "schedule_time": "09:00"  # 오전 9시
 }
